@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../opengram-tdesktop"
+		},
+		{
+			"path": "../opengram-android"
 		}
 	],
 	"settings": {}
