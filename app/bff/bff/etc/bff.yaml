@@ -58,3 +58,12 @@ SyncClient:
   Topic:   "Sync-T"
   Brokers:
     - 127.0.0.1:9092
+
+VoipCallConfigJSON: '{"udp_p2p":true,"udp_reflector":true}'
+VoipRelayEndpoints:
+  - Id: 1
+    Ip: 127.0.0.1
+    Ipv6: ""
+    Port: 3478
+    PeerTag: "00112233445566778899aabbccddeeff"
+    Tcp: false

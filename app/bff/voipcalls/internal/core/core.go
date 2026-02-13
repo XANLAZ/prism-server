@@ -1,0 +1,372 @@
+package core
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"time"
+
+	"github.com/zeromicro/go-zero/core/logx"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/teamgram/proto/mtproto"
+	"github.com/teamgram/proto/mtproto/rpc/metadata"
+	"github.com/teamgram/teamgram-server/app/bff/voipcalls/internal/svc"
+	"github.com/teamgram/teamgram-server/app/messenger/msg/msg/msg"
+	"github.com/teamgram/teamgram-server/app/messenger/sync/sync"
+	userpb "github.com/teamgram/teamgram-server/app/service/biz/user/user"
+)
+
+type VoipCallsCore struct {
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+	logx.Logger
+	MD *metadata.RpcMetadata
+}
+
+func New(ctx context.Context, svcCtx *svc.ServiceContext) *VoipCallsCore {
+	return &VoipCallsCore{
+		ctx:    ctx,
+		svcCtx: svcCtx,
+		Logger: logx.WithContext(ctx),
+		MD:     metadata.RpcMetadataFromIncoming(ctx),
+	}
+}
+
+func (c *VoipCallsCore) nowUnix() int32 {
+	return int32(time.Now().Unix())
+}
+
+func (c *VoipCallsCore) randomInt64() int64 {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	v := int64(binary.LittleEndian.Uint64(b[:]))
+	if v < 0 {
+		v = -v
+	}
+	return v
+}
+
+func (c *VoipCallsCore) userPairKey(a, b int64) string {
+	if a < b {
+		return fmt.Sprintf("%d:%d", a, b)
+	}
+	return fmt.Sprintf("%d:%d", b, a)
+}
+
+func (c *VoipCallsCore) getUsersForResponse(userIDs ...int64) []*mtproto.User {
+	mUsers, err := c.svcCtx.Dao.UserClient.UserGetMutableUsers(c.ctx, &userpb.TLUserGetMutableUsers{
+		Id: userIDs,
+		To: []int64{},
+	})
+	if err != nil || mUsers == nil {
+		return []*mtproto.User{}
+	}
+	return mUsers.GetUserListByIdList(c.MD.UserId, userIDs...)
+}
+
+func (c *VoipCallsCore) pushCallUpdate(userID int64, phoneCall *mtproto.PhoneCall, users []*mtproto.User) {
+	update := mtproto.MakeTLUpdatePhoneCall(&mtproto.Update{
+		PhoneCall: phoneCall,
+	}).To_Update()
+	push := mtproto.MakeUpdatesByUpdates(update)
+	push.Users = users
+	_, _ = c.svcCtx.Dao.SyncClient.SyncPushUpdates(c.ctx, &sync.TLSyncPushUpdates{
+		UserId:  userID,
+		Updates: push,
+	})
+}
+
+func (c *VoipCallsCore) pushSignalingUpdate(userID int64, callID int64, data []byte) {
+	update := mtproto.MakeTLUpdatePhoneCallSignalingData(&mtproto.Update{
+		PhoneCallId:    callID,
+		Data_FLAGBYTES: data,
+	}).To_Update()
+	_, _ = c.svcCtx.Dao.SyncClient.SyncPushUpdates(c.ctx, &sync.TLSyncPushUpdates{
+		UserId:  userID,
+		Updates: mtproto.MakeUpdatesByUpdates(update),
+	})
+}
+
+func (c *VoipCallsCore) relayConnections() []*mtproto.PhoneConnection {
+	if len(c.svcCtx.Config.VoipRelayEndpoints) == 0 {
+		return []*mtproto.PhoneConnection{
+			mtproto.MakeTLPhoneConnection(&mtproto.PhoneConnection{
+				Id:      1,
+				Ip:      "127.0.0.1",
+				Ipv6:    "",
+				Port:    3478,
+				PeerTag: svc.MakePeerTag(),
+			}).To_PhoneConnection(),
+		}
+	}
+
+	connections := make([]*mtproto.PhoneConnection, 0, len(c.svcCtx.Config.VoipRelayEndpoints))
+	for idx, endpoint := range c.svcCtx.Config.VoipRelayEndpoints {
+		id := endpoint.Id
+		if id == 0 {
+			id = int64(idx + 1)
+		}
+		connections = append(connections, mtproto.MakeTLPhoneConnection(&mtproto.PhoneConnection{
+			Tcp:      endpoint.Tcp,
+			Id:       id,
+			Ip:       endpoint.Ip,
+			Ipv6:     endpoint.Ipv6,
+			Port:     endpoint.Port,
+			PeerTag:  svc.DecodePeerTag(endpoint.PeerTag),
+			Turn:     endpoint.Turn,
+			Stun:     endpoint.Stun,
+			Username: endpoint.Username,
+			Password: endpoint.Password,
+		}).To_PhoneConnection())
+	}
+	return connections
+}
+
+func (c *VoipCallsCore) PhoneGetCallConfig(_ *mtproto.TLPhoneGetCallConfig) (*mtproto.DataJSON, error) {
+	data := c.svcCtx.Config.VoipCallConfigJSON
+	if data == "" {
+		data = `{"udp_p2p":true,"udp_reflector":true}`
+	}
+	return mtproto.MakeTLDataJSON(&mtproto.DataJSON{Data: data}).To_DataJSON(), nil
+}
+
+func (c *VoipCallsCore) PhoneRequestCall(in *mtproto.TLPhoneRequestCall) (*mtproto.Phone_PhoneCall, error) {
+	participantID := mtproto.FromInputUser(c.MD.UserId, in.UserId).PeerId
+	if participantID == 0 || participantID == c.MD.UserId {
+		return nil, mtproto.ErrUserIdInvalid
+	}
+
+	now := c.nowUnix()
+	call := &svc.PrivateCallSession{
+		ID:            c.randomInt64(),
+		AccessHash:    c.randomInt64(),
+		AdminID:       c.MD.UserId,
+		ParticipantID: participantID,
+		Video:         in.Video,
+		Date:          now,
+		State:         svc.CallStateRequested,
+		Protocol:      in.Protocol,
+		GAHash:        in.GAHash,
+	}
+
+	key := c.userPairKey(call.AdminID, call.ParticipantID)
+	c.svcCtx.Mu.Lock()
+	c.svcCtx.CallsByID[call.ID] = call
+	c.svcCtx.CallsByUserKey[key] = call.ID
+	c.svcCtx.Mu.Unlock()
+
+	users := c.getUsersForResponse(call.AdminID, call.ParticipantID)
+	requested := mtproto.MakeTLPhoneCallRequested(&mtproto.PhoneCall{
+		Video:         call.Video,
+		Id:            call.ID,
+		AccessHash:    call.AccessHash,
+		Date:          call.Date,
+		AdminId:       call.AdminID,
+		ParticipantId: call.ParticipantID,
+		GAHash:        call.GAHash,
+		Protocol:      in.Protocol,
+	}).To_PhoneCall()
+	c.pushCallUpdate(call.ParticipantID, requested, users)
+
+	waiting := mtproto.MakeTLPhoneCallWaiting(&mtproto.PhoneCall{
+		Video:         call.Video,
+		Id:            call.ID,
+		AccessHash:    call.AccessHash,
+		Date:          call.Date,
+		AdminId:       call.AdminID,
+		ParticipantId: call.ParticipantID,
+		Protocol:      in.Protocol,
+	}).To_PhoneCall()
+
+	return mtproto.MakeTLPhonePhoneCall(&mtproto.Phone_PhoneCall{
+		PhoneCall: waiting,
+		Users:     users,
+	}).To_Phone_PhoneCall(), nil
+}
+
+func (c *VoipCallsCore) PhoneAcceptCall(in *mtproto.TLPhoneAcceptCall) (*mtproto.Phone_PhoneCall, error) {
+	callID := in.Peer.GetId()
+	accessHash := in.Peer.GetAccessHash()
+
+	c.svcCtx.Mu.Lock()
+	call, ok := c.svcCtx.CallsByID[callID]
+	if !ok || call.AccessHash != accessHash || call.ParticipantID != c.MD.UserId {
+		c.svcCtx.Mu.Unlock()
+		return nil, mtproto.ErrCallPeerInvalid
+	}
+	call.State = svc.CallStateAccepted
+	call.GB = in.GB
+	call.Protocol = in.Protocol
+	users := c.getUsersForResponse(call.AdminID, call.ParticipantID)
+	accepted := mtproto.MakeTLPhoneCallAccepted(&mtproto.PhoneCall{
+		Video:         call.Video,
+		Id:            call.ID,
+		AccessHash:    call.AccessHash,
+		Date:          call.Date,
+		AdminId:       call.AdminID,
+		ParticipantId: call.ParticipantID,
+		GB:            call.GB,
+		Protocol:      in.Protocol,
+	}).To_PhoneCall()
+	waiting := mtproto.MakeTLPhoneCallWaiting(&mtproto.PhoneCall{
+		Video:         call.Video,
+		Id:            call.ID,
+		AccessHash:    call.AccessHash,
+		Date:          call.Date,
+		AdminId:       call.AdminID,
+		ParticipantId: call.ParticipantID,
+		Protocol:      in.Protocol,
+	}).To_PhoneCall()
+	c.svcCtx.Mu.Unlock()
+
+	c.pushCallUpdate(call.AdminID, accepted, users)
+	return mtproto.MakeTLPhonePhoneCall(&mtproto.Phone_PhoneCall{
+		PhoneCall: waiting,
+		Users:     users,
+	}).To_Phone_PhoneCall(), nil
+}
+
+func (c *VoipCallsCore) PhoneConfirmCall(in *mtproto.TLPhoneConfirmCall) (*mtproto.Phone_PhoneCall, error) {
+	callID := in.Peer.GetId()
+	accessHash := in.Peer.GetAccessHash()
+
+	c.svcCtx.Mu.Lock()
+	call, ok := c.svcCtx.CallsByID[callID]
+	if !ok || call.AccessHash != accessHash || call.AdminID != c.MD.UserId {
+		c.svcCtx.Mu.Unlock()
+		return nil, mtproto.ErrCallPeerInvalid
+	}
+	call.State = svc.CallStateEstablished
+	call.GA = in.GA
+	call.KeyFingerprint = in.KeyFingerprint
+	call.Protocol = in.Protocol
+	call.StartDate = c.nowUnix()
+	connections := c.relayConnections()
+	users := c.getUsersForResponse(call.AdminID, call.ParticipantID)
+	established := mtproto.MakeTLPhoneCall(&mtproto.PhoneCall{
+		Video:               call.Video,
+		P2PAllowed:          true,
+		ConferenceSupported: false,
+		Id:                  call.ID,
+		AccessHash:          call.AccessHash,
+		Date:                call.Date,
+		AdminId:             call.AdminID,
+		ParticipantId:       call.ParticipantID,
+		GAOrB:               call.GA,
+		KeyFingerprint:      call.KeyFingerprint,
+		Protocol:            in.Protocol,
+		Connections:         connections,
+		StartDate:           call.StartDate,
+	}).To_PhoneCall()
+	c.svcCtx.Mu.Unlock()
+
+	c.pushCallUpdate(call.ParticipantID, established, users)
+	return mtproto.MakeTLPhonePhoneCall(&mtproto.Phone_PhoneCall{
+		PhoneCall: established,
+		Users:     users,
+	}).To_Phone_PhoneCall(), nil
+}
+
+func (c *VoipCallsCore) PhoneReceivedCall(in *mtproto.TLPhoneReceivedCall) (*mtproto.Bool, error) {
+	callID := in.Peer.GetId()
+	c.svcCtx.Mu.Lock()
+	call, ok := c.svcCtx.CallsByID[callID]
+	if ok && call.ParticipantID == c.MD.UserId {
+		call.State = svc.CallStateWaitingIncoming
+		receiveDate := c.nowUnix()
+		call.Date = call.Date
+		users := c.getUsersForResponse(call.AdminID, call.ParticipantID)
+		waiting := mtproto.MakeTLPhoneCallWaiting(&mtproto.PhoneCall{
+			Video:         call.Video,
+			Id:            call.ID,
+			AccessHash:    call.AccessHash,
+			Date:          call.Date,
+			AdminId:       call.AdminID,
+			ParticipantId: call.ParticipantID,
+			Protocol:      call.Protocol,
+			ReceiveDate:   wrapperspb.Int32(receiveDate),
+		}).To_PhoneCall()
+		c.svcCtx.Mu.Unlock()
+		c.pushCallUpdate(call.AdminID, waiting, users)
+		return mtproto.BoolTrue, nil
+	}
+	c.svcCtx.Mu.Unlock()
+	return mtproto.BoolFalse, nil
+}
+
+func (c *VoipCallsCore) PhoneDiscardCall(in *mtproto.TLPhoneDiscardCall) (*mtproto.Updates, error) {
+	callID := in.Peer.GetId()
+	accessHash := in.Peer.GetAccessHash()
+
+	c.svcCtx.Mu.Lock()
+	call, ok := c.svcCtx.CallsByID[callID]
+	if !ok || call.AccessHash != accessHash {
+		c.svcCtx.Mu.Unlock()
+		return mtproto.MakeUpdatesByUpdates(), nil
+	}
+	call.State = svc.CallStateDiscarded
+	call.LastReason = in.Reason
+	call.LastDuration = in.Duration
+
+	discarded := mtproto.MakeTLPhoneCallDiscarded(&mtproto.PhoneCall{
+		NeedRating: in.Reason.GetPredicateName() == mtproto.Predicate_phoneCallDiscardReasonHangup,
+		NeedDebug:  false,
+		Video:      call.Video,
+		Id:         call.ID,
+		Reason:     in.Reason,
+		Duration:   wrapperspb.Int32(in.Duration),
+	}).To_PhoneCall()
+	users := c.getUsersForResponse(call.AdminID, call.ParticipantID)
+	delete(c.svcCtx.CallsByID, call.ID)
+	delete(c.svcCtx.CallsByUserKey, c.userPairKey(call.AdminID, call.ParticipantID))
+	c.svcCtx.Mu.Unlock()
+
+	c.pushCallUpdate(call.AdminID, discarded, users)
+	c.pushCallUpdate(call.ParticipantID, discarded, users)
+	return mtproto.MakeUpdatesByUpdates(mtproto.MakeTLUpdatePhoneCall(&mtproto.Update{
+		PhoneCall: discarded,
+	}).To_Update()), nil
+}
+
+func (c *VoipCallsCore) PhoneSetCallRating(_ *mtproto.TLPhoneSetCallRating) (*mtproto.Updates, error) {
+	return mtproto.MakeUpdatesByUpdates(), nil
+}
+
+func (c *VoipCallsCore) PhoneSaveCallDebug(_ *mtproto.TLPhoneSaveCallDebug) (*mtproto.Bool, error) {
+	return mtproto.BoolTrue, nil
+}
+
+func (c *VoipCallsCore) PhoneSendSignalingData(in *mtproto.TLPhoneSendSignalingData) (*mtproto.Bool, error) {
+	callID := in.Peer.GetId()
+	accessHash := in.Peer.GetAccessHash()
+	c.svcCtx.Mu.RLock()
+	call, ok := c.svcCtx.CallsByID[callID]
+	c.svcCtx.Mu.RUnlock()
+	if !ok || call.AccessHash != accessHash {
+		return mtproto.BoolFalse, nil
+	}
+	toUserID := call.AdminID
+	if c.MD.UserId == call.AdminID {
+		toUserID = call.ParticipantID
+	}
+	c.pushSignalingUpdate(toUserID, call.ID, in.Data)
+	return mtproto.BoolTrue, nil
+}
+
+func (c *VoipCallsCore) PhoneSaveCallLog(_ *mtproto.TLPhoneSaveCallLog) (*mtproto.Bool, error) {
+	return mtproto.BoolTrue, nil
+}
+
+func (c *VoipCallsCore) MessagesDeletePhoneCallHistory(in *mtproto.TLMessagesDeletePhoneCallHistory) (*mtproto.Messages_AffectedFoundMessages, error) {
+	r, err := c.svcCtx.Dao.MsgClient.MsgDeletePhoneCallHistory(c.ctx, &msg.TLMsgDeletePhoneCallHistory{
+		UserId:    c.MD.UserId,
+		AuthKeyId: c.MD.AuthId,
+		Revoke:    in.Revoke,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}

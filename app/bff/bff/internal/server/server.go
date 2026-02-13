@@ -49,6 +49,7 @@ import (
 	userchannelprofileshelper "github.com/teamgram/teamgram-server/app/bff/userchannelprofiles"
 	usernames_helper "github.com/teamgram/teamgram-server/app/bff/usernames"
 	users_helper "github.com/teamgram/teamgram-server/app/bff/users"
+	voipcalls_helper "github.com/teamgram/teamgram-server/app/bff/voipcalls"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -352,6 +353,18 @@ func (s *Server) Initialize() error {
 			grpcServer,
 			passkeyhelper.New(passkeyhelper.Config{
 				RpcServerConf: c.RpcServerConf,
+			}))
+
+		// voipcalls_helper
+		mtproto.RegisterRPCVoipCallsServer(
+			grpcServer,
+			voipcalls_helper.New(voipcalls_helper.Config{
+				RpcServerConf:      c.RpcServerConf,
+				UserClient:         c.BizServiceClient,
+				MsgClient:          c.MsgClient,
+				SyncClient:         c.SyncClient,
+				VoipCallConfigJSON: c.VoipCallConfigJSON,
+				VoipRelayEndpoints: c.VoipRelayEndpoints,
 			}))
 	})
 

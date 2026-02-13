@@ -20,6 +20,7 @@ package config
 
 import (
 	kafka "github.com/teamgram/marmota/pkg/mq"
+	voipcalls_helper "github.com/teamgram/teamgram-server/app/bff/voipcalls"
 	"github.com/teamgram/teamgram-server/pkg/code/conf"
 	"github.com/zeromicro/go-zero/core/stores/kv"
 	"github.com/zeromicro/go-zero/zrpc"
@@ -37,6 +38,8 @@ type Config struct {
 	SyncClient                *kafka.KafkaProducerConf
 	DfsClient                 zrpc.RpcClientConf
 	StatusClient              zrpc.RpcClientConf
-	SignInServiceNotification []conf.MessageEntityConfig `json:",optional"`
-	SignInMessage             []conf.MessageEntityConfig `json:",optional"`
+	VoipCallConfigJSON        string                               `json:",optional"`
+	VoipRelayEndpoints        []voipcalls_helper.VoipRelayEndpoint `json:",optional"`
+	SignInServiceNotification []conf.MessageEntityConfig           `json:",optional"`
+	SignInMessage             []conf.MessageEntityConfig           `json:",optional"`
 }

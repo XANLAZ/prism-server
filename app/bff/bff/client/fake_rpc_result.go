@@ -220,6 +220,26 @@ func (c *BFFProxyClient) TryReturnFakeRpcResult(ctx context.Context, object mtpr
 			Chats:    []*mtproto.Chat{},
 			Users:    []*mtproto.User{},
 		}).To_Messages_Messages(), nil
+	case "TLMessagesGetScheduledHistory":
+		return mtproto.MakeTLMessagesMessages(&mtproto.Messages_Messages{
+			Messages: []*mtproto.Message{},
+			Chats:    []*mtproto.Chat{},
+			Users:    []*mtproto.User{},
+		}).To_Messages_Messages(), nil
+
+	// secret chats / voip key exchange prerequisite
+	case "TLMessagesGetDhConfig":
+		in := object.(*mtproto.TLMessagesGetDhConfig)
+		randomLength := int(in.GetRandomLength())
+		if randomLength <= 0 || randomLength > 1024 {
+			randomLength = 256
+		}
+		return mtproto.MakeTLMessagesDhConfig(&mtproto.Messages_DhConfig{
+			G:       gNewAlgoG,
+			P:       gNewAlgoP,
+			Version: 1,
+			Random:  crypto.RandomBytes(randomLength),
+		}).To_Messages_DhConfig(), nil
 
 	// reactions
 	case "TLMessagesGetAvailableReactions":
@@ -284,12 +304,6 @@ func (c *BFFProxyClient) TryReturnFakeRpcResult(ctx context.Context, object mtpr
 		return mtproto.BoolTrue, nil
 	case "TLMessagesReportSpam":
 		return mtproto.BoolTrue, nil
-
-	// phone
-	case "TLPhoneGetCallConfig":
-		return mtproto.MakeTLDataJSON(&mtproto.DataJSON{
-			Data: "{}",
-		}).To_DataJSON(), nil
 
 	case "TLAccountGetAuthorizations":
 		return mtproto.MakeTLAccountAuthorizations(&mtproto.Account_Authorizations{
