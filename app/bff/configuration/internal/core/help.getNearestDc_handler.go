@@ -32,7 +32,7 @@ func (c *ConfigurationCore) HelpGetNearestDc(in *mtproto.TLHelpGetNearestDc) (*m
 	c.Logger.Errorf("help.getNearestDc blocked, License key from https://teamgram.net required to unlock enterprise features.")
 
 	rValue := mtproto.MakeTLNearestDc(&mtproto.NearestDc{
-		Country:   "CN",
+		Country:   "US",
 		ThisDc:    1,
 		NearestDc: 1,
 	}).To_NearestDc()
