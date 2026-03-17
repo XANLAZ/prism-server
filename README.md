@@ -1,144 +1,70 @@
-# Teamgram Server
+# 🚀 OwpenGram Server
 
-[中文](README-zh.md) | **English**
+**A fully-featured (WIP) Telegram-compatible server, free for everyone to use.**
 
----
-
-Unofficial open-source [MTProto](https://core.telegram.org/mtproto) server implementation in Go. Compatible with Telegram clients; supports self-hosted deployment.
-
-## Features
-
-- **MTProto 2.0**
-  - **Abridged**
-  - **Intermediate**
-  - **Padded intermediate**
-  - **Full**
-- **API Layer: 222**
-- **Core features**
-  - **private chat**
-  - **basic group**
-  - **contacts**
-  - **web**
-
-## Architecture
-
-![Architecture](docs/image/architecture-001.png)
-
-- [Architecture Docs](https://deepwiki.com/teamgram/teamgram-server) - `DeepWiki` teamgram/teamgram-server
-- [Architecture (specs)](specs/architecture.md) — service topology, data flow, and ports  
-- [Service topology and configuration](docs/service-topology.md) — ports, infrastructure dependencies, call graph, and Mermaid diagram ([中文](docs/service-topology-zh.md))
-
-## Prerequisites
-
-| Component | Purpose |
-|-----------|---------|
-| [MySQL](https://www.mysql.com/) 5.7+ / 8.0 | Primary data store |
-| [Redis](https://redis.io/) | Cache, session, deduplication |
-| [etcd](https://etcd.io/) | Service discovery & config |
-| [Kafka](https://kafka.apache.org/) | Message & event pipeline |
-| [MinIO](https://minio.io/) | Object storage |
-| [FFmpeg](https://ffmpeg.org/) | Media transcoding (on server) |
-
-Detailed versions and optional monitoring stack: [Dependencies and runtime (specs)](specs/dependencies-and-runtime.md).
+https://github.com/user-attachments/assets/3eee67ff-692f-455c-a1ca-444e25000865
 
 ---
 
-## Manual installation
+## ✨ What is OwpenGram?
 
-For running the server from source (Go build), follow the step-by-step guides:
+OwpenGram is an open-source Telegram-compatible server that will provide a complete MTProto implementation. Deploy your own messaging server and use it with comfort clients!
 
-- **[Manual installation (Linux)](docs/install-manual-linux.md)** — CentOS, Fedora, Ubuntu/Debian
-- **[Manual installation (macOS)](docs/install-manual-macos.md)** — Intel and Apple Silicon
+## 🎯 Current Features
 
-Requires Go 1.21+. You must install and configure dependencies (MySQL, Redis, etcd, Kafka, MinIO, FFmpeg), initialize the database and MinIO, then build and run.
+- 💬 **Private Chats** - Full support for private messaging
+- 👥 **Basic Groups** - Create and manage groups
+- 📇 **Contacts** - Contact management and synchronization
+- 🌐 **Web** - Web client support
+- 📞 **1-to-1 Calls** - Voice and video calls
 
----
+## 🚀 Quick Start
 
-## Docker installation
+### Docker Installation
 
-For running the full stack with Docker. **No manual data initialization:** the dependency stack initializes the database (via mounted SQL) and MinIO buckets (via `minio-mc`) on first start.
+Get up and running in minutes with Docker! No manual setup required.
 
-### 1. Clone
+**1. Clone the repository**
 
 ```bash
-git clone https://github.com/teamgram/teamgram-server.git
-cd teamgram-server
+git clone https://github.com/owpengram/owpengram-server.git
+cd owpengram-server
 ```
 
-### 2. Start dependency stack
+**2. Start dependencies**
 
-This starts MySQL, Redis, etcd, Kafka, MinIO (and optional monitoring). The database and MinIO buckets are initialized automatically.
+This starts MySQL, Redis, etcd, Kafka, and MinIO. Everything initializes automatically!
 
 ```bash
 docker compose -f docker-compose-env.yaml up -d
 ```
 
-### 3. Start application
+**3. Start the application**
 
 ```bash
 docker compose up -d
 ```
 
----
+**Default verification code:** `12345` (change this for production!)
 
-## Logging, monitoring & tracing
+## 📱 Supported Clients
 
-| Area | Brief | Detailed docs |
-|------|--------|----------------|
-| **Log** | [Filebeat](https://www.elastic.co/beats/filebeat) → Kafka (`teamgram-log`) → [go-stash](https://github.com/kevwan/go-stash) → Elasticsearch → Kibana. Config: `teamgramd/deploy/filebeat/conf/filebeat.yml`, `teamgramd/deploy/go-stash/etc/`. | [Log collection](docs/log-collection.md) ([中文](docs/log-collection-zh.md)) |
-| **Monitor** | [Prometheus](https://prometheus.io/) scrapes metrics; [Grafana](https://grafana.com/) for dashboards. Enable via `Prometheus` block in `teamgramd/etc2/*.yaml`. Config: `teamgramd/deploy/prometheus/server/prometheus.yml`. | [Service monitoring](docs/service-monitoring.md) ([中文](docs/service-monitoring-zh.md)) |
-| **Tracing** | go-zero [Jaeger](https://www.jaegertracing.io/) / Zipkin support. Set `Telemetry` in `teamgramd/etc2/*.yaml`. Jaeger is included in `docker-compose-env.yaml`. | [Link tracking](docs/link-tracking.md) ([中文](docs/link-tracking-zh.md)) |
+- 🤖 [Android Client](https://github.com/owpengram/owpengram-android-client)
+- 💻 [Desktop Client](https://github.com/owpengram/owpengram-desktop-client)
 
----
+## 💬 Community
 
-## Compatible clients
+- 📢 **Telegram Channel:** [@owpengram](https://t.me/owpengram)
+- 💬 **Telegram Chat:** [Join the discussion](https://t.me/+sVB6Ymv70jEwNTAy)
 
-**Default sign-in verification code:** `12345` (change for production.)
+For detailed documentation and advanced setup, check out the [original Teamgram Server repository](https://github.com/teamgram/teamgram-server).
 
-| Platform | Repository | Patch Link |
-|----------|------------|------------|
-| Android | [https://github.com/teamgram/teamgram-android](https://github.com/teamgram/teamgram-android) | [teamgram-android](clients/teamgram-android.md) |
-| iOS | [https://github.com/teamgram/teamgram-ios](https://github.com/teamgram/teamgram-ios) | [teamgram-ios](clients/teamgram-ios.md) |
-| Desktop (TDesktop) | [https://github.com/teamgram/teamgram-tdesktop](https://github.com/teamgram/teamgram-tdesktop) | [teamgram-tdesktop](clients/teamgram-tdesktop.md) |
+## 📄 License
+
+[Apache License 2.0](LICENSE)
 
 ---
 
-## Documentation
+## ⭐ Give us a Star!
 
-- [Project specs](specs/README.md) — Architecture, protocol, dependencies, contributing, security, roadmap
-- [Service topology and configuration](docs/service-topology.md) — Ports, infrastructure, call graph ([中文](docs/service-topology-zh.md))
-- [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [CHANGELOG](CHANGELOG.md)
-
-
----
-
-## Community & feedback
-
-- **Issues:** bugs and feature requests
-- **Telegram:** [Teamgram group](https://t.me/+TjD5LZJ5XLRlCYLF)
-
----
-
-## Enterprise edition
-
-The following are available in the enterprise edition (contact the [author](https://t.me/benqi)):
-
-- sticker/theme/chat_theme/wallpaper/reactions/secretchat/2fa/sms/push(apns/web/fcm)/web/scheduled/autodelete/... 
-- channels/megagroups
-- audio/video/group/conferenceCall
-- bots
-- miniapp
-
-See [specs/roadmap.md](specs/roadmap.md) for community vs. enterprise scope.
-
----
-
-## License
-
-[Apache License 2.0](LICENSE).
-
----
-
-## Give a Star! ⭐
-
-If this project helps you, consider giving it a star.
+If OwpenGram helps you, consider giving us a star on GitHub!
