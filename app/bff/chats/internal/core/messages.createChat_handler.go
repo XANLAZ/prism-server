@@ -45,12 +45,6 @@ func (c *ChatsCore) createChat(iUsers []*mtproto.InputUser, chatTitle string, tt
 		return nil, err
 	}
 
-	if len(iUsers) == 0 {
-		err := mtproto.ErrUsersTooFew
-		c.Logger.Errorf("messages.createChat - error: %v", err)
-		return nil, err
-	}
-
 	// check user too much
 	if len(iUsers) > 200-1 {
 		err := mtproto.ErrUsersTooMuch
@@ -139,7 +133,7 @@ func (c *ChatsCore) createChat(iUsers []*mtproto.InputUser, chatTitle string, tt
 		}
 	}
 
-	if len(userAddList) == 0 {
+	if len(iUsers) > 0 && len(userAddList) == 0 {
 		err := mtproto.ErrUsersTooFew
 		c.Logger.Errorf("messages.createChat - error: %v", err)
 		return nil, err
