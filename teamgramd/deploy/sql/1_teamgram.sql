@@ -1092,6 +1092,12 @@ ALTER TABLE `auth_keys`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=213484;
 
 --
+-- 使用表AUTO_INCREMENT `auth_key_infos`
+--
+ALTER TABLE `auth_key_infos`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+
+--
 -- 使用表AUTO_INCREMENT `auth_seq_updates`
 --
 ALTER TABLE `auth_seq_updates`
