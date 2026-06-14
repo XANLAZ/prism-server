@@ -3,34 +3,18 @@
 # range can be slow or fail on Docker Desktop (Windows/Mac), and that must
 # never block the main server (gnetway/session/...) from starting.
 #
-# PUBLIC_IP and TURN_SECRET come from the .env file written by start-server.
-# On a Linux host, "network_mode: host" is more efficient than the published
-# ports below; --external-ip makes relayed media reach remote clients either way.
+# Config lives in coturn/turnserver.conf, rendered by start-server from
+# coturn/turnserver.conf.template with the public IP + TURN secret. Using a
+# config file (instead of a long command line) avoids arg-parsing breakage and
+# makes external-ip reliably applied.
 services:
   coturn:
     image: coturn/coturn:latest
     restart: always
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
     ports:
       - "3478:3478/udp"
       - "3478:3478/tcp"
       - "49160-49200:49160-49200/udp"
-    command:
-      - -n
-      - --listening-port=3478
-      - --min-port=49160
-      - --max-port=49200
-      - --realm=owpengram
-      - --lt-cred-mech
-      - --fingerprint
-      - --no-tls
-      - --no-dtls
-      - --no-cli
-      # Log to the container's stdout so `docker logs` / Docker Desktop show it.
-      # coturn defaults to a logfile inside the container (hence "no logs").
-      # --verbose prints auth + relay-allocation events (useful to debug calls);
-      # drop it once everything works to reduce noise.
-      - --log-file=stdout
-      - --simple-log
-      - --verbose
-      - --external-ip=${PUBLIC_IP:-127.0.0.1}
-      - --user=owpengram:${TURN_SECRET:-changeme}

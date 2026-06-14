@@ -40,6 +40,11 @@ fi
 # --- bake public address + TURN secret into the server config -----------
 sed -i -E "s|^([[:space:]]*Ip:[[:space:]]*).*$|\1${PUBLIC_IP}|" "$BFF"
 sed -i -E "s|^([[:space:]]*Password:[[:space:]]*).*$|\1\"${TURN_SECRET}\"|" "$BFF"
+
+# --- render coturn config from template (public IP + TURN secret) --------
+mkdir -p coturn
+sed -e "s|__PUBLIC_IP__|${PUBLIC_IP}|g" -e "s|__TURN_SECRET__|${TURN_SECRET}|g" \
+    coturn/turnserver.conf.template > coturn/turnserver.conf
 echo "[cfg] public address = ${PUBLIC_IP}; TURN relay configured."
 
 echo

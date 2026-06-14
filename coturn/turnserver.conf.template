@@ -1,0 +1,30 @@
+# coturn config template. start-server (.bat/.sh) renders this into
+# coturn/turnserver.conf with __PUBLIC_IP__ and __TURN_SECRET__ substituted.
+# Do not edit the generated turnserver.conf by hand.
+
+# TURN/STUN listening port (control).
+listening-port=3478
+
+# Relay (media) UDP port range. Must match the published range in
+# docker-compose-turn.yaml and be open in the provider firewall.
+min-port=49160
+max-port=49200
+
+# Advertise the PUBLIC ip for relay candidates. Without this, coturn hands out
+# the private Docker address (e.g. 172.18.0.2), which remote clients cannot
+# reach -> calls fall back to flaky P2P. This is the key line for global calls.
+external-ip=__PUBLIC_IP__
+
+realm=owpengram
+fingerprint
+lt-cred-mech
+user=owpengram:__TURN_SECRET__
+
+# No TLS/DTLS (plain UDP/TCP TURN is enough for tgcalls and avoids needing certs).
+no-tls
+no-dtls
+
+# Log to stdout so `docker logs` shows it. Drop --verbose once it works.
+log-file=stdout
+simple-log
+verbose

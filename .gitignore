@@ -69,3 +69,4 @@ nul
 *.code-workspace*
 .public_ip
 .turn_secret
+coturn/turnserver.conf

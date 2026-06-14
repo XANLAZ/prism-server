@@ -44,6 +44,15 @@ if %ERRORLEVEL% neq 0 (
   pause
   exit /b %ERRORLEVEL%
 )
+
+rem --- render coturn config from template (public IP + TURN secret) -----
+if not exist coturn mkdir coturn
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ip='%PUBLIC_IP%'; $sec='!TURN_SECRET!'; $base=(Get-Location).Path; $tpl=Join-Path $base 'coturn\turnserver.conf.template'; $out=Join-Path $base 'coturn\turnserver.conf'; $enc=New-Object System.Text.UTF8Encoding($false); $t=[System.IO.File]::ReadAllText($tpl); $t=$t -replace '__PUBLIC_IP__',$ip -replace '__TURN_SECRET__',$sec; [System.IO.File]::WriteAllText($out,$t,$enc)"
+if %ERRORLEVEL% neq 0 (
+  echo [ERROR] failed to render coturn\turnserver.conf
+  pause
+  exit /b %ERRORLEVEL%
+)
 echo [cfg] public address = %PUBLIC_IP%; TURN relay configured.
 
 rem --- Windows firewall (best-effort; requires admin) ------------------
