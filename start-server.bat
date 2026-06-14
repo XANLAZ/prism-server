@@ -37,12 +37,18 @@ rem --- compose env (consumed by the coturn service) ---------------------
 > "%ENV_FILE%" echo PUBLIC_IP=%PUBLIC_IP%
 >> "%ENV_FILE%" echo TURN_SECRET=!TURN_SECRET!
 
+rem --- keep a pristine copy; restored after the build so the rendered TURN
+rem     secret is never left on disk / committed by accident ----------------
+set "BFF_PRISTINE=%TEMP%\owpengram_bff_pristine.yaml"
+copy /Y "%BFF%" "%BFF_PRISTINE%" >nul
+
 rem --- bake public address + TURN secret into the server config ---------
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ip='%PUBLIC_IP%'; $sec='!TURN_SECRET!'; $f=(Resolve-Path '%BFF%').Path; $enc=New-Object System.Text.UTF8Encoding($false); $t=[System.IO.File]::ReadAllText($f); $t=$t.TrimStart([char]0xFEFF); $t=$t -replace '(?m)^(\s*Ip:\s*).*$', ('${1}'+$ip); $t=$t -replace '(?m)^(\s*Password:\s*).*$', ('${1}\"'+$sec+'\"'); [System.IO.File]::WriteAllText($f,$t,$enc)"
 if %ERRORLEVEL% neq 0 (
   echo [ERROR] failed to update %BFF%
+  call :restore_bff
   pause
-  exit /b %ERRORLEVEL%
+  exit /b 1
 )
 
 rem --- render coturn config from template (public IP + TURN secret) -----
@@ -67,18 +73,22 @@ echo [1/2] docker compose -f docker-compose-env.yaml up -d
 docker compose -f docker-compose-env.yaml up -d
 if %ERRORLEVEL% neq 0 (
   echo [ERROR] env stack failed
+  call :restore_bff
   pause
-  exit /b %ERRORLEVEL%
+  exit /b 1
 )
 
 echo.
 echo [2/3] docker compose up -d --build  (core server)
 rem --build so the edited config (public address) is baked into the image.
 docker compose up -d --build
-if %ERRORLEVEL% neq 0 (
+set "BUILD_ERR=%ERRORLEVEL%"
+rem revert bff.yaml to placeholders now that the image is built with the secret
+call :restore_bff
+if %BUILD_ERR% neq 0 (
   echo [ERROR] app stack failed
   pause
-  exit /b %ERRORLEVEL%
+  exit /b %BUILD_ERR%
 )
 
 echo.
@@ -94,4 +104,14 @@ echo      Also open these ports in the VPS PROVIDER firewall:
 echo        TCP 10443        - MTProto (login / chats / media)
 echo        UDP+TCP 3478     - TURN/STUN control (calls)
 echo        UDP 49160-49200  - TURN media relay (calls)
+exit /b 0
+
+:restore_bff
+rem restore the tracked bff.yaml from the pristine copy (placeholders), so the
+rem rendered public IP + TURN secret are never left in the working tree.
+if defined BFF_PRISTINE if exist "%BFF_PRISTINE%" (
+  copy /Y "%BFF_PRISTINE%" "%BFF%" >nul
+  del /Q "%BFF_PRISTINE%" >nul
+  echo [cfg] bff.yaml reverted to placeholders ^(secret not left on disk^).
+)
 exit /b 0

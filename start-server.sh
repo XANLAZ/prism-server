@@ -38,6 +38,22 @@ fi
 } > "$ENV_FILE"
 
 # --- bake public address + TURN secret into the server config -----------
+# Keep a pristine copy of the tracked config and ALWAYS restore it on exit
+# (success or failure), so the rendered public IP + TURN secret are never left
+# in the working tree and can't be committed/pushed by accident. The image is
+# built from the rendered file before the script exits, so restoring afterwards
+# is safe.
+BFF_PRISTINE="$(mktemp)"
+cp "$BFF" "$BFF_PRISTINE"
+restore_bff() {
+  if [[ -f "$BFF_PRISTINE" ]]; then
+    cp "$BFF_PRISTINE" "$BFF"
+    rm -f "$BFF_PRISTINE"
+    echo "[cfg] bff.yaml reverted to placeholders (secret not left on disk)."
+  fi
+}
+trap restore_bff EXIT
+
 sed -i -E "s|^([[:space:]]*Ip:[[:space:]]*).*$|\1${PUBLIC_IP}|" "$BFF"
 sed -i -E "s|^([[:space:]]*Password:[[:space:]]*).*$|\1\"${TURN_SECRET}\"|" "$BFF"
 

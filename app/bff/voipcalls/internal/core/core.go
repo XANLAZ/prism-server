@@ -479,8 +479,14 @@ func (c *VoipCallsCore) PhoneAcceptCall(in *mtproto.TLPhoneAcceptCall) (*mtproto
 	}
 	c.svcCtx.Mu.RUnlock()
 
-	// Only send busy updates if call is still accepted (not discarded or established)
-	if callState == svc.CallStateAccepted {
+	// Notify the participant's OTHER devices to stop ringing as soon as one
+	// device took the call. This must fire for both Accepted AND Established:
+	// by the time we re-check (after the 100ms delay above) the admin has often
+	// already sent confirmCall and advanced the call to Established. The other
+	// devices receive that phoneCall(established) but cannot join it (no key),
+	// so they keep ringing unless we explicitly send them a busy discard. Only
+	// skip when the call was cancelled (Discarded).
+	if callState != svc.CallStateDiscarded {
 		excludeAuthIDs := make([]int64, 0, 2)
 		if storedAcceptedByAuth != 0 {
 			excludeAuthIDs = append(excludeAuthIDs, storedAcceptedByAuth)

@@ -80,9 +80,11 @@ SyncClient:
 VoipCallConfigJSON: '{"udp_p2p":true,"udp_reflector":true}'
 VoipRelayEndpoints:
   - Id: 1
-    # Ip and Password are filled automatically by start-server (.bat/.sh)
-    # from the public address and the generated TURN secret. Do not edit by hand.
-    Ip: 127.0.0.1
+    # Ip and Password are placeholders on purpose. start-server (.bat/.sh) fills
+    # them from the public address and the generated TURN secret right before the
+    # build, then reverts this file back to these placeholders afterwards, so the
+    # real TURN secret is never left in the working tree / committed. Do not edit.
+    Ip: __PUBLIC_IP__
     Ipv6: ""
     Port: 3478
     PeerTag: "00112233445566778899aabbccddeeff"
