@@ -1003,13 +1003,42 @@ func (m *MainAuthWrapper) onSyncData(ctx context.Context, syncMsg *syncData) {
 		}
 	}
 
-	if m.mainUpdatesSession != nil {
-		m.mainUpdatesSession.onSyncData(ctx, syncMsg.data.obj)
+	if sess := m.pickUpdatesSession(); sess != nil {
+		sess.onSyncData(ctx, syncMsg.data.obj)
 	}
 
 	if syncMsg.needAndroidPush && m.androidPushSession != nil {
 		m.androidPushSession.onSyncData(ctx, nil)
 	}
+}
+
+// pickUpdatesSession returns the session that realtime updates must be pushed to.
+//
+// mainUpdatesSession is only repointed to the current session on
+// updates.getState / updates.getDifference / updates.getChannelDifference /
+// account.updateStatus (see session_invoke.go). After a network change the
+// client reconnects on a new session and may issue another request first
+// (e.g. phone.requestCall) before getDifference. A realtime update that arrives
+// in that window (e.g. updatePhoneCall) would be queued onto the stale, now
+// offline mainUpdatesSession and lost when it times out — the caller hangs on
+// "waiting" until the call is cancelled. This manifested as calls working only
+// intermittently after switching Wi-Fi <-> mobile.
+//
+// Fix the race by falling back to any online generic session of the same auth
+// when the designated mainUpdatesSession is not online, so the update always
+// reaches the live connection. If nobody is online we keep the existing session
+// so the update is still buffered and flushed once a connection returns.
+func (m *MainAuthWrapper) pickUpdatesSession() *session {
+	if m.mainUpdatesSession != nil && m.mainUpdatesSession.sessionOnline() {
+		return m.mainUpdatesSession
+	}
+	for _, sess := range m.mainAuth.sessions {
+		if sess.isGeneric && sess.sessionOnline() {
+			m.mainUpdatesSession = sess
+			return sess
+		}
+	}
+	return m.mainUpdatesSession
 }
 
 func doRpcRequest(ctx context.Context, dao *dao.Dao, md *metadata.RpcMetadata, request *rpcApiMessage) {
