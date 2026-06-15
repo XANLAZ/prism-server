@@ -33,7 +33,7 @@ This document covers branching, PR rules, code style, commit messages, and local
 
 ### Dependencies
 
-- MySQL, Redis, etcd, Kafka, MinIO (and FFmpeg if needed). Optional: `docker compose -f docker-compose-env.yaml up -d`.
+- MySQL, Redis, etcd, Kafka, MinIO (and FFmpeg if needed). Optional: `docker compose -f docker-compose-env-full.yaml up -d`.
 - **Database**: Create DB `teamgram`, run all scripts under `teamgramd/deploy/sql/` in order (see main README).
 - **MinIO**: Buckets `documents`, `encryptedfiles`, `photos`, `videos` (auto-created when using docker-compose-env).
 

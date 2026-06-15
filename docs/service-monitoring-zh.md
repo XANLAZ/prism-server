@@ -27,7 +27,7 @@ Prometheus:
 ## Prometheus 配置
 
 - **配置路径**：`teamgramd/deploy/prometheus/server/prometheus.yml`
-- **Docker**：在 `docker-compose-env.yaml` 中挂载（如 `./teamgramd/deploy/prometheus/server/prometheus.yml:/etc/prometheus/prometheus.yml`）。
+- **Docker**：在 `docker-compose-env-full.yaml` 中挂载（如 `./teamgramd/deploy/prometheus/server/prometheus.yml:/etc/prometheus/prometheus.yml`）。
 
 `prometheus.yml` 中包括：
 
@@ -40,10 +40,10 @@ Prometheus:
 
 ### 1. 启动 Grafana
 
-Grafana 已包含在 `docker-compose-env.yaml` 中，启动环境栈即可：
+Grafana 已包含在 `docker-compose-env-full.yaml` 中，启动环境栈即可：
 
 ```bash
-docker compose -f docker-compose-env.yaml up -d
+docker compose -f docker-compose-env-full.yaml up -d
 ```
 
 访问地址一般为 `http://localhost:3000`（或所暴露端口）。默认账号常见为 `admin`/`admin`（以环境变量或文档为准，首次登录可能要求修改密码）。

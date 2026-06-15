@@ -1,6 +1,6 @@
 # 高性能组件环境使用说明（docker-compose-env2）
 
-基于 `docker-compose-env2.yaml` 的独立环境栈，不依赖 `docker-compose-env.yaml`。包含监控、日志、消息队列、存储等组件。
+基于 `docker-compose-env2.yaml` 的独立环境栈，不依赖 `docker-compose-env-full.yaml`。包含监控、日志、消息队列、存储等组件。
 
 ## 组件列表
 

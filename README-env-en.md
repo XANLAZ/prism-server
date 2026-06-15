@@ -1,6 +1,6 @@
 # High-Performance Components Environment (docker-compose-env2)
 
-A self-contained environment stack based on `docker-compose-env2.yaml`, independent of `docker-compose-env.yaml`. It includes monitoring, logging, message queue, storage, and related components.
+A self-contained environment stack based on `docker-compose-env2.yaml`, independent of `docker-compose-env-full.yaml`. It includes monitoring, logging, message queue, storage, and related components.
 
 ## Components
 

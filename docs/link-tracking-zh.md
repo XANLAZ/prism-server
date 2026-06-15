@@ -27,10 +27,10 @@ Telemetry:
 
 ### 2. 运行 Jaeger（或 Zipkin）
 
-`docker-compose-env.yaml` 中已包含 Jaeger 服务，启动环境栈即可：
+`docker-compose-env-full.yaml` 中已包含 Jaeger 服务，启动环境栈即可：
 
 ```bash
-docker compose -f docker-compose-env.yaml up -d
+docker compose -f docker-compose-env-full.yaml up -d
 ```
 
 Jaeger all-in-one 会接收上报（如 14268），并提供 Web UI（默认 16686）。在浏览器打开 `http://localhost:16686`，可按服务、操作、时间范围查询链路。

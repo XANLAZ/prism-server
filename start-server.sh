@@ -6,6 +6,30 @@ BFF="teamgramd/etc2/bff.yaml"
 IP_FILE=".public_ip"
 SECRET_FILE=".turn_secret"
 ENV_FILE=".env"
+PROFILE_FILE=".env_profile"
+
+# --- Infrastructure profile (interactive) -------------------------------
+# Picks which dependency stack to run. All three share the same core
+# (kafka/etcd/redis/mysql/minio); they differ in memory limits and the
+# logging/tracing/metrics services.
+DEFAULT_PROFILE="default"
+[[ -f "$PROFILE_FILE" ]] && DEFAULT_PROFILE="$(tr -d '[:space:]' < "$PROFILE_FILE")"
+
+echo "Choose an infrastructure profile:"
+echo "  1) minimal  - core only + strict memory limits        (~2-4 GB RAM)"
+echo "  2) default  - core only, no memory limits             (~4-8 GB RAM)"
+echo "  3) full     - core + logging / tracing / metrics      (~16 GB RAM)"
+read -rp "Profile [${DEFAULT_PROFILE}]: " PROFILE_CHOICE
+PROFILE_CHOICE="${PROFILE_CHOICE:-$DEFAULT_PROFILE}"
+case "$PROFILE_CHOICE" in
+  1|min|minimal)  ENV_PROFILE="min" ;;
+  2|default|def)  ENV_PROFILE="default" ;;
+  3|full)         ENV_PROFILE="full" ;;
+  *) echo "[ERROR] invalid profile: $PROFILE_CHOICE"; exit 1 ;;
+esac
+ENV_COMPOSE="docker-compose-env-${ENV_PROFILE}.yaml"
+echo "$ENV_PROFILE" > "$PROFILE_FILE"
+echo "[cfg] infrastructure profile = ${ENV_PROFILE} (${ENV_COMPOSE})"
 
 # --- Public address (interactive) ---------------------------------------
 # Public IP/host that remote clients use to reach this server. Baked into the
@@ -64,8 +88,14 @@ sed -e "s|__PUBLIC_IP__|${PUBLIC_IP}|g" -e "s|__TURN_SECRET__|${TURN_SECRET}|g" 
 echo "[cfg] public address = ${PUBLIC_IP}; TURN relay configured."
 
 echo
-echo "[1/2] docker compose -f docker-compose-env.yaml up -d"
-docker compose -f docker-compose-env.yaml up -d
+# When switching down from the full profile, remove leftover observability-only
+# containers (safe: only these fixed names, never the core or app container).
+if [[ "$ENV_PROFILE" != "full" ]]; then
+  docker rm -f jaeger grafana prometheus kibana elasticsearch filebeat go-stash node-exporter >/dev/null 2>&1 || true
+fi
+
+echo "[1/3] docker compose -f ${ENV_COMPOSE} up -d  (infrastructure: ${ENV_PROFILE})"
+docker compose -f "${ENV_COMPOSE}" up -d
 
 echo
 echo "[2/3] docker compose up -d --build  (core server)"

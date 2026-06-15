@@ -6,7 +6,7 @@ This document outlines short- and medium-term goals and the boundary between com
 
 - **Docs and specs**: Keep specs (architecture, protocol, dependencies, contributing, security, release, roadmap) in sync with the codebase.
 - **CI and quality**: Add CI (e.g. GitHub Actions) for build, test, and lint (e.g. golangci-lint); add `test`, `lint`, `fmt` targets to Makefile where useful.
-- **Doc consistency**: Align README and other docs (e.g. docker-compose-env.yaml naming, install guides).
+- **Doc consistency**: Align README and other docs (e.g. docker-compose-env-full.yaml naming, install guides).
 
 ## Medium-term
 

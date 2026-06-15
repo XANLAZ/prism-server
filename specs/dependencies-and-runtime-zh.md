@@ -18,7 +18,7 @@
 
 ## 可选：监控与日志
 
-`docker-compose-env.yaml` 中可选的组件包括：
+`docker-compose-env-full.yaml` 中可选的组件包括：
 
 | 组件 | 用途 |
 |------|------|
@@ -35,7 +35,7 @@
 
 ## 版本与 Docker 镜像（参考）
 
-与 `docker-compose-env.yaml` 及 [README-env-cn.md](../README-env-cn.md) / [README-env-en.md](../README-env-en.md) 一致：
+与 `docker-compose-env-full.yaml` 及 [README-env-cn.md](../README-env-cn.md) / [README-env-en.md](../README-env-en.md) 一致：
 
 - **Kafka**: bitnamilegacy/kafka:3.5.1（KRaft）
 - **etcd**: quay.io/coreos/etcd:v3.5.11
@@ -51,8 +51,8 @@
 
 ## Docker 环境栈
 
-- **Compose 文件**：**`docker-compose-env.yaml`**（部分旧文档中称为「docker-compose-env2」）。
-- **使用**：复制 `.env.example` 为 `.env`，执行 `docker compose -f docker-compose-env.yaml up -d`。详见 README-env-cn.md / README-env-en.md。
+- **Compose 文件**：**`docker-compose-env-full.yaml`**（部分旧文档中称为「docker-compose-env2」）。
+- **使用**：复制 `.env.example` 为 `.env`，执行 `docker compose -f docker-compose-env-full.yaml up -d`。详见 README-env-cn.md / README-env-en.md。
 - **网络**：`teamgram_net`；数据在项目 `data/` 目录下。
 
 ## 无 Docker 时的安装

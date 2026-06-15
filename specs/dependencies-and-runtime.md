@@ -18,7 +18,7 @@ This document covers core dependencies, recommended versions, and the Docker sta
 
 ## Optional: monitoring and logging
 
-The Docker stack in `docker-compose-env.yaml` can include:
+The Docker stack in `docker-compose-env-full.yaml` can include:
 
 | Component | Purpose |
 |-----------|---------|
@@ -35,7 +35,7 @@ See the main README section “Logging, monitoring & tracing” and `teamgramd/d
 
 ## Versions and Docker images (reference)
 
-Aligned with `docker-compose-env.yaml` and [README-env-cn.md](../README-env-cn.md) / [README-env-en.md](../README-env-en.md):
+Aligned with `docker-compose-env-full.yaml` and [README-env-cn.md](../README-env-cn.md) / [README-env-en.md](../README-env-en.md):
 
 - **Kafka**: bitnamilegacy/kafka:3.5.1 (KRaft)
 - **etcd**: quay.io/coreos/etcd:v3.5.11
@@ -51,8 +51,8 @@ Aligned with `docker-compose-env.yaml` and [README-env-cn.md](../README-env-cn.m
 
 ## Docker stack
 
-- **Compose file**: **`docker-compose-env.yaml`** (sometimes referred to as “docker-compose-env2” in older docs).
-- **Usage**: Copy `.env.example` to `.env`, then `docker compose -f docker-compose-env.yaml up -d`. See README-env-cn.md / README-env-en.md.
+- **Compose file**: **`docker-compose-env-full.yaml`** (sometimes referred to as “docker-compose-env2” in older docs).
+- **Usage**: Copy `.env.example` to `.env`, then `docker compose -f docker-compose-env-full.yaml up -d`. See README-env-cn.md / README-env-en.md.
 - **Network**: `teamgram_net`; data under project `data/` directory.
 
 ## Installation without Docker

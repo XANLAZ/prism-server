@@ -29,7 +29,7 @@ Teamgram uses [Filebeat](https://www.elastic.co/beats/filebeat) to collect logs,
 ### Filebeat
 
 - **Path**: `teamgramd/deploy/filebeat/conf/filebeat.yml`
-- **Docker**: Mounted in `docker-compose-env.yaml`; ensure the Docker containers log path (e.g. `/var/lib/docker/containers`) is correct for your host.
+- **Docker**: Mounted in `docker-compose-env-full.yaml`; ensure the Docker containers log path (e.g. `/var/lib/docker/containers`) is correct for your host.
 
 Main settings:
 
@@ -49,7 +49,7 @@ Main settings:
 
 ### Elasticsearch & Kibana
 
-Started via `docker-compose-env.yaml`. Default ports (when exposed): Elasticsearch 9200, Kibana 5601.
+Started via `docker-compose-env-full.yaml`. Default ports (when exposed): Elasticsearch 9200, Kibana 5601.
 
 ## Kibana
 
@@ -61,8 +61,8 @@ Started via `docker-compose-env.yaml`. Default ports (when exposed): Elasticsear
 ## Troubleshooting
 
 - **No logs in Kibana**: Check that Filebeat and go-stash containers are running, Kafka topic `teamgram-log` has messages, and Elasticsearch has indices `teamgram-*`. Check go-stash and Filebeat logs for errors.
-- **Docker log path**: Filebeat must see container log files; the path in `filebeat.yml` must match the Docker daemon’s `containers` directory (e.g. `/var/lib/docker/containers`). Adjust the volume in `docker-compose-env.yaml` if your Docker root is different.
-- **go-stash image**: Use the image specified in `docker-compose-env.yaml` (e.g. `kevinwan/go-stash:1.1.1`). If the config format differs, check [go-stash](https://github.com/kevwan/go-stash) documentation.
+- **Docker log path**: Filebeat must see container log files; the path in `filebeat.yml` must match the Docker daemon’s `containers` directory (e.g. `/var/lib/docker/containers`). Adjust the volume in `docker-compose-env-full.yaml` if your Docker root is different.
+- **go-stash image**: Use the image specified in `docker-compose-env-full.yaml` (e.g. `kevinwan/go-stash:1.1.1`). If the config format differs, check [go-stash](https://github.com/kevwan/go-stash) documentation.
 
 ## See also
 

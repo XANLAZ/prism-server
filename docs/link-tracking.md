@@ -27,10 +27,10 @@ Telemetry:
 
 ### 2. Run Jaeger (or Zipkin)
 
-The env stack in `docker-compose-env.yaml` includes Jaeger. Start it with:
+The env stack in `docker-compose-env-full.yaml` includes Jaeger. Start it with:
 
 ```bash
-docker compose -f docker-compose-env.yaml up -d
+docker compose -f docker-compose-env-full.yaml up -d
 ```
 
 Jaeger all-in-one listens for traces (e.g. on 14268) and serves the UI (default port 16686). Open `http://localhost:16686` to search traces by service, operation, or time range.

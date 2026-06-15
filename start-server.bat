@@ -6,6 +6,35 @@ set "BFF=teamgramd\etc2\bff.yaml"
 set "IP_FILE=.public_ip"
 set "SECRET_FILE=.turn_secret"
 set "ENV_FILE=.env"
+set "PROFILE_FILE=.env_profile"
+
+rem --- Infrastructure profile (interactive) -----------------------------
+rem All three share the same core (kafka/etcd/redis/mysql/minio); they differ
+rem in memory limits and the logging/tracing/metrics services.
+set "DEFAULT_PROFILE=default"
+if exist "%PROFILE_FILE%" set /p DEFAULT_PROFILE=<"%PROFILE_FILE%"
+echo Choose an infrastructure profile:
+echo   [1] minimal  - core only + strict memory limits     approx 2-4 GB RAM
+echo   [2] default  - core only, no memory limits          approx 4-8 GB RAM
+echo   [3] full     - core + logging / tracing / metrics   approx 16 GB RAM
+set /p "PROFILE_CHOICE=Profile [%DEFAULT_PROFILE%]: "
+if not defined PROFILE_CHOICE set "PROFILE_CHOICE=%DEFAULT_PROFILE%"
+set "ENV_PROFILE="
+if /i "%PROFILE_CHOICE%"=="1"       set "ENV_PROFILE=min"
+if /i "%PROFILE_CHOICE%"=="min"     set "ENV_PROFILE=min"
+if /i "%PROFILE_CHOICE%"=="minimal" set "ENV_PROFILE=min"
+if /i "%PROFILE_CHOICE%"=="2"       set "ENV_PROFILE=default"
+if /i "%PROFILE_CHOICE%"=="default" set "ENV_PROFILE=default"
+if /i "%PROFILE_CHOICE%"=="3"       set "ENV_PROFILE=full"
+if /i "%PROFILE_CHOICE%"=="full"    set "ENV_PROFILE=full"
+if not defined ENV_PROFILE (
+  echo [ERROR] invalid profile: %PROFILE_CHOICE%
+  pause
+  exit /b 1
+)
+set "ENV_COMPOSE=docker-compose-env-%ENV_PROFILE%.yaml"
+> "%PROFILE_FILE%" echo %ENV_PROFILE%
+echo [cfg] infrastructure profile = %ENV_PROFILE% : %ENV_COMPOSE%
 
 rem --- Public address (interactive) -------------------------------------
 rem Public IP/host that remote clients use to reach this server. Baked into
@@ -69,8 +98,13 @@ netsh advfirewall firewall add rule name="owpengram turn 3478 tcp" dir=in action
 netsh advfirewall firewall add rule name="owpengram turn media" dir=in action=allow protocol=UDP localport=49160-49200 >nul 2>&1
 
 echo.
-echo [1/2] docker compose -f docker-compose-env.yaml up -d
-docker compose -f docker-compose-env.yaml up -d
+rem When not 'full', remove leftover observability-only containers from a previous
+rem full run (safe: only these fixed names, never the core or app container).
+if /i not "%ENV_PROFILE%"=="full" (
+  for %%C in (jaeger grafana prometheus kibana elasticsearch filebeat go-stash node-exporter) do docker rm -f %%C >nul 2>&1
+)
+echo [1/3] infrastructure "%ENV_PROFILE%" : docker compose -f %ENV_COMPOSE% up -d
+docker compose -f "%ENV_COMPOSE%" up -d
 if %ERRORLEVEL% neq 0 (
   echo [ERROR] env stack failed
   call :restore_bff

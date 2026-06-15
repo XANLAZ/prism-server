@@ -48,7 +48,7 @@
 
 **Docker 部署：** [install-docker.md](docs/install-docker.md)（docker-compose 完整栈）。
 
-**一键环境（Docker）：** 使用 [docker-compose-env.yaml](docker-compose-env.yaml)，详见 [README-env-cn.md](README-env-cn.md) / [README-env-en.md](README-env-en.md)。
+**一键环境（Docker）：** 使用 [docker-compose-env-full.yaml](docker-compose-env-full.yaml)，详见 [README-env-cn.md](README-env-cn.md) / [README-env-en.md](README-env-en.md)。
 
 ---
 
@@ -79,7 +79,7 @@ cd teamgram-server
 将启动 MySQL、Redis、etcd、Kafka、MinIO 及可选监控组件。数据库与 MinIO 桶会自动完成初始化。
 
 ```bash
-docker compose -f docker-compose-env.yaml up -d
+docker compose -f docker-compose-env-full.yaml up -d
 ```
 
 ### 3. 启动应用
@@ -96,7 +96,7 @@ docker compose up -d
 |------|------|----------|
 | **日志** | Filebeat → Kafka（`teamgram-log`）→ go-stash → Elasticsearch → Kibana。配置：`teamgramd/deploy/filebeat/conf/filebeat.yml`、`teamgramd/deploy/go-stash/etc/`。 | [日志收集](docs/log-collection-zh.md)（[English](docs/log-collection.md)） |
 | **监控** | Prometheus 拉取指标，Grafana 展示。在 `teamgramd/etc2/*.yaml` 中配置 `Prometheus`。配置：`teamgramd/deploy/prometheus/server/prometheus.yml`。 | [服务监控](docs/service-monitoring-zh.md)（[English](docs/service-monitoring.md)） |
-| **链路追踪** | go-zero 支持 Jaeger / Zipkin，在 `teamgramd/etc2/*.yaml` 中配置 `Telemetry`。`docker-compose-env.yaml` 已包含 Jaeger。 | [链路追踪](docs/link-tracking-zh.md)（[English](docs/link-tracking.md)） |
+| **链路追踪** | go-zero 支持 Jaeger / Zipkin，在 `teamgramd/etc2/*.yaml` 中配置 `Telemetry`。`docker-compose-env-full.yaml` 已包含 Jaeger。 | [链路追踪](docs/link-tracking-zh.md)（[English](docs/link-tracking.md)） |
 
 ---
 

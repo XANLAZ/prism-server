@@ -27,7 +27,7 @@ The repo’s Prometheus config already defines scrape jobs for these targets; en
 ## Prometheus configuration
 
 - **Path**: `teamgramd/deploy/prometheus/server/prometheus.yml`
-- **Docker**: Mounted in `docker-compose-env.yaml` (e.g. `./teamgramd/deploy/prometheus/server/prometheus.yml:/etc/prometheus/prometheus.yml`).
+- **Docker**: Mounted in `docker-compose-env-full.yaml` (e.g. `./teamgramd/deploy/prometheus/server/prometheus.yml:/etc/prometheus/prometheus.yml`).
 
 `prometheus.yml` contains:
 
@@ -40,10 +40,10 @@ When you add a new service, add a corresponding scrape job and ensure the servic
 
 ### 1. Start Grafana
 
-Grafana is included in `docker-compose-env.yaml`. Start the env stack:
+Grafana is included in `docker-compose-env-full.yaml`. Start the env stack:
 
 ```bash
-docker compose -f docker-compose-env.yaml up -d
+docker compose -f docker-compose-env-full.yaml up -d
 ```
 
 Default URL: `http://localhost:3000` (or the port you expose). Default login is often `admin` / `admin` (check env or docs; change on first login if prompted).

@@ -33,7 +33,7 @@
 
 ### 依赖环境
 
-- MySQL、Redis、etcd、Kafka、MinIO（及可选 FFmpeg）。可选：`docker compose -f docker-compose-env.yaml up -d`。
+- MySQL、Redis、etcd、Kafka、MinIO（及可选 FFmpeg）。可选：`docker compose -f docker-compose-env-full.yaml up -d`。
 - **数据库**：创建库 `teamgram`，按顺序执行 `teamgramd/deploy/sql/` 下所有 SQL（见主 README）。
 - **MinIO**：桶 `documents`、`encryptedfiles`、`photos`、`videos`（使用 docker-compose-env 时可由 minio-mc 自动创建）。
 

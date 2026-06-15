@@ -70,3 +70,4 @@ nul
 .public_ip
 .turn_secret
 coturn/turnserver.conf
+.env_profile
