@@ -33,6 +33,10 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # Pin the JVM heap. Without this, the cgroup-aware JVM picks a tiny heap
+      # (~25% of the limit) and log recovery thrashes in GC / stalls. Kafka needs
+      # ~700M+ to be stable, so the limit is 768M (the realistic floor for Kafka).
+      KAFKA_HEAP_OPTS: "-Xmx384m -Xms256m"
     volumes:
       - ./data/kafka/data:/var/lib/kafka/data
     restart: always
@@ -41,7 +45,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 768M
 
   # --- Config & service discovery ---
   etcd:
