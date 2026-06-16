@@ -54,19 +54,39 @@ cd owpengram-server
 - **Linux / macOS:** `./start-server.sh`
 - **Windows:** `start-server.bat`
 
-It asks for your **public address** — this one answer decides whether your
-server is private or reachable worldwide:
+The script asks you two things:
 
-- 🏠 **Local network:** enter your machine's local IP (e.g. `192.168.1.50`).
-  Clients on the same network connect to it.
-- 🌍 **Global (VPS):** enter your server's public IP or domain
-  (e.g. `203.0.113.10` or `chat.example.com`).
+- 🌐 **Public address** — decides whether your server is private or worldwide:
+  - 🏠 **Local network:** your machine's local IP (e.g. `192.168.1.50`) — clients on the same network connect to it.
+  - 🌍 **Global (VPS):** your public IP or domain (e.g. `203.0.113.10` or `chat.example.com`).
+- 🧱 **Infrastructure profile** — how heavy the supporting stack is (see below).
 
-The script then generates a TURN secret, bakes your address into the config,
-builds and starts the whole stack (plus the calls relay), and opens the needed
-Windows firewall ports automatically.
+It then generates a TURN secret, bakes your address into the config, builds and
+starts the whole stack (plus the calls relay), and opens the needed Windows
+firewall ports automatically.
 
 > **Default verification code:** `12345` — change it before any real use!
+
+### 🧱 Infrastructure profiles
+
+OwpenGram runs its dependencies (database, cache, message queue, storage, …)
+from one of three Docker profiles. Pick the one that fits your machine when the
+script asks — each maps to a `docker-compose-env-<profile>.yaml` file:
+
+- **`min`** — core services only, with strict per-service memory limits and
+  low-RAM tuning. Best for small / cheap servers. **~2–4 GB RAM.**
+- **`default`** — core services only, no memory caps (services use what they
+  need). The right balance for most servers, and the default choice.
+  **~4–8 GB RAM.**
+- **`full`** — everything in `default` plus the full observability stack
+  (Jaeger, Prometheus, Grafana, Elasticsearch, Kibana, log shipping) for
+  production monitoring and diagnostics. **Heavier — 8 GB+ RAM.**
+
+Prefer to start the infrastructure yourself? Run a profile directly:
+
+```bash
+docker compose -f docker-compose-env-min.yaml up -d      # or -default / -full
+```
 
 ## 🔌 Ports to open for global access
 
