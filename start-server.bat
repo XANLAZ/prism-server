@@ -113,6 +113,32 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
+echo [1.5/3] waiting for MySQL, then applying DB migrations (idempotent)
+set /a _myw=0
+:wait_mysql
+docker exec mysql mysql -uteamgram -pteamgram teamgram -N -e "SELECT 1" >nul 2>&1
+if not errorlevel 1 goto do_migrations
+set /a _myw+=1
+if !_myw! gtr 60 ( echo [WARN] MySQL not ready ~120s - skipping migrations & goto after_migrations )
+timeout /t 2 >nul
+goto wait_mysql
+:do_migrations
+docker exec mysql mysql -uteamgram -pteamgram teamgram -e "CREATE TABLE IF NOT EXISTS schema_migrations (name VARCHAR(128) NOT NULL PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);" >nul 2>&1
+rem Apply each migrate-*.sql in date order, only if not already recorded. --force tolerates
+rem "already applied" duplicate-column/key errors on a pre-existing DB, so nothing breaks.
+for /f "delims=" %%F in ('dir /b /on "teamgramd\deploy\sql\migrate-*.sql" 2^>nul') do (
+  set "_done="
+  for /f "usebackq delims=" %%C in (`docker exec mysql mysql -uteamgram -pteamgram teamgram -N -e "SELECT COUNT(1) FROM schema_migrations WHERE name='%%F'" 2^>nul`) do set "_done=%%C"
+  if not "!_done!"=="1" (
+    echo   [migrate] %%F
+    docker exec -i mysql mysql --force -uteamgram -pteamgram teamgram < "teamgramd\deploy\sql\%%F" >nul 2>&1
+    docker exec mysql mysql -uteamgram -pteamgram teamgram -e "INSERT IGNORE INTO schema_migrations (name) VALUES ('%%F');" >nul 2>&1
+  )
+)
+echo [OK] DB migrations applied.
+:after_migrations
+
+echo.
 echo [2/3] docker compose up -d --build  (core server)
 rem --build so the edited config (public address) is baked into the image.
 docker compose up -d --build

@@ -98,6 +98,30 @@ echo "[1/3] docker compose -f ${ENV_COMPOSE} up -d  (infrastructure: ${ENV_PROFI
 docker compose -f "${ENV_COMPOSE}" up -d
 
 echo
+echo "[1.5/3] waiting for MySQL, then applying DB migrations (idempotent)"
+for _i in $(seq 1 60); do
+  docker exec mysql mysql -uteamgram -pteamgram teamgram -N -e "SELECT 1" >/dev/null 2>&1 && break
+  sleep 2
+done
+if docker exec mysql mysql -uteamgram -pteamgram teamgram -N -e "SELECT 1" >/dev/null 2>&1; then
+  docker exec mysql mysql -uteamgram -pteamgram teamgram -e "CREATE TABLE IF NOT EXISTS schema_migrations (name VARCHAR(128) NOT NULL PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);" >/dev/null 2>&1
+  # Apply each migrate-*.sql in date order, only if not already recorded. --force tolerates
+  # "already applied" duplicate-column/key errors on a pre-existing DB, so nothing breaks.
+  for f in $(ls teamgramd/deploy/sql/migrate-*.sql 2>/dev/null | sort); do
+    name=$(basename "$f")
+    done=$(docker exec mysql mysql -uteamgram -pteamgram teamgram -N -e "SELECT COUNT(1) FROM schema_migrations WHERE name='${name}'" 2>/dev/null)
+    if [ "$done" != "1" ]; then
+      echo "  [migrate] ${name}"
+      docker exec -i mysql mysql --force -uteamgram -pteamgram teamgram < "$f" >/dev/null 2>&1
+      docker exec mysql mysql -uteamgram -pteamgram teamgram -e "INSERT IGNORE INTO schema_migrations (name) VALUES ('${name}');" >/dev/null 2>&1
+    fi
+  done
+  echo "[OK] DB migrations applied."
+else
+  echo "[WARN] MySQL not ready ~120s - skipping migrations"
+fi
+
+echo
 echo "[2/3] docker compose up -d --build  (core server)"
 # --build so the edited config (public address) is baked into the image.
 docker compose up -d --build
