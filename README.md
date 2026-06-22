@@ -30,7 +30,7 @@ no censorship.
 ## 🎯 What works today
 
 - 💬 Private chats
-- 👥 Groups & channels
+- 👥 Groups
 - 📞 Voice & video calls (1-to-1, with a built-in TURN relay so they work globally)
 - 🖼️ Media & files — photos, videos, documents
 - 📇 Contacts sync
