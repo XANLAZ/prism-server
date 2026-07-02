@@ -94,6 +94,12 @@ if [[ "$ENV_PROFILE" != "full" ]]; then
   docker rm -f jaeger grafana prometheus kibana elasticsearch filebeat go-stash node-exporter >/dev/null 2>&1 || true
 fi
 
+# Fix Kafka data directory permissions (host side) — must run BEFORE docker compose up
+if [ -d "./data/kafka" ]; then
+  echo "[cfg] fixing kafka data directory permissions"
+  sudo chown -R 1000:1000 ./data/kafka
+fi
+
 echo "[1/3] docker compose -f ${ENV_COMPOSE} up -d  (infrastructure: ${ENV_PROFILE})"
 docker compose -f "${ENV_COMPOSE}" up -d
 
