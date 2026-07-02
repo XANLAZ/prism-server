@@ -12,10 +12,12 @@ package config
 import (
 	"github.com/zeromicro/go-zero/core/stores/kv"
 	"github.com/zeromicro/go-zero/zrpc"
+	"github.com/teamgram/marmota/pkg/stores/sqlx"
 )
 
 type Config struct {
 	zrpc.RpcServerConf
 	NodeId   int64 // snowflake
 	SeqIDGen kv.KvConf
+	Mysql    sqlx.Config
 }

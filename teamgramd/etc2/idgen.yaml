@@ -6,23 +6,25 @@ Etcd:
   Key: service.idgen
 Log:
   ServiceName: service.idgen
-  #Mode: file
-  #Path: ../logs/idgen
   Level: debug
-#监控
 Prometheus:
   Host: 0.0.0.0
   Port: 20661
   Path: /metrics
-#链路追踪
 Telemetry:
   Name: service.idgen
   Endpoint: jaeger:4317
   Disabled: true
   Sampler: 1.0
   Batcher: otlpgrpc
-  
+
 NodeId: 1
 
 SeqIDGen:
   - Host: redis:6379
+
+Mysql:
+  DSN: teamgram:teamgram@tcp(mysql:3306)/teamgram?charset=utf8mb4&parseTime=true
+  Active: 10
+  Idle: 10
+  IdleTimeout: 4h
