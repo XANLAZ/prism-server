@@ -117,6 +117,20 @@ if docker exec mysql mysql -uteamgram -pteamgram teamgram -N -e "SELECT 1" >/dev
     fi
   done
   echo "[OK] DB migrations applied."
+
+# Sync ID generator counters from MySQL to Redis (prevents duplicate key issues)
+if [ -f "./sync_idgen.sh" ]; then
+  echo "[sync] Syncing ID generator counters (message_box_ngen, pts_updates_ngen)..."
+  bash ./sync_idgen.sh
+  # Start watchdog in background to auto-sync on drift
+  echo "[sync] Starting ID generator watchdog (background)..."
+  nohup bash ./sync_idgen.sh watchdog > ./sync_watchdog.log 2>&1 &
+  WATCHDOG_PID=$!
+  echo $WATCHDOG_PID > ./sync_watchdog.pid
+  echo "[sync] Watchdog started (PID: $WATCHDOG_PID)"
+else
+  echo "[WARN] sync_idgen.sh not found, skipping ID generator sync"
+fi
 else
   echo "[WARN] MySQL not ready ~120s - skipping migrations"
 fi
