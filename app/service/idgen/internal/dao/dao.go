@@ -10,9 +10,10 @@
 package dao
 
 import (
-	"strconv"
 	"context"
+	"database/sql"
 	"log"
+	"strconv"
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/teamgram/marmota/pkg/stores/sqlx"
@@ -79,57 +80,43 @@ func (d *Dao) SyncCountersFromMySQL(ctx context.Context) error {
 
 func (d *Dao) syncMessageBoxCounters(ctx context.Context) error {
 	// Get all user_ids that have messages
-	rows, err := d.db.Query(ctx, `SELECT DISTINCT user_id FROM messages`)
+	var userIDs []int64
+	err := d.db.QueryRowsPartial(ctx, &userIDs, `SELECT DISTINCT user_id FROM messages`)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var userID int64
-		if err := rows.Scan(&userID); err != nil {
-			return err
-		}
-
+	for _, userID := range userIDs {
 		// Get max user_message_box_id for this user
-		var maxBoxID sqlx.NullInt64
-		err = d.db.QueryRow(ctx, `SELECT MAX(user_message_box_id) FROM messages WHERE user_id = ?`, userID).
-			Scan(&maxBoxID)
+		var maxBoxID sql.NullInt64
+		err = d.db.QueryRowPartial(ctx, &maxBoxID, `SELECT MAX(user_message_box_id) FROM messages WHERE user_id = ?`, userID)
 		if err != nil {
 			return err
 		}
 
 		if maxBoxID.Valid && maxBoxID.Int64 > 0 {
 			nextID := maxBoxID.Int64 + 1
-			key := "message_box_ngen_" + string(rune(userID)) // Actually need strconv
-			// Use proper string conversion
-			key = "message_box_ngen_" + strconv.FormatInt(userID, 10)
-			if err := d.KV.Set(ctx, key, strconv.FormatInt(nextID, 10)); err != nil {
+			key := "message_box_ngen_" + strconv.FormatInt(userID, 10)
+			if err := d.KV.Set(key, strconv.FormatInt(nextID, 10)); err != nil {
 				logx.Errorf("idgen: failed to set %s: %v", key, err)
 				continue
 			}
 			logx.Infof("idgen: synced %s = %d (was %d)", key, nextID, maxBoxID.Int64)
 		}
 	}
-	return rows.Err()
+	return nil
 }
 
 func (d *Dao) syncPtsCounters(ctx context.Context) error {
-	rows, err := d.db.Query(ctx, `SELECT DISTINCT user_id FROM user_pts_updates`)
+	var userIDs []int64
+	err := d.db.QueryRowsPartial(ctx, &userIDs, `SELECT DISTINCT user_id FROM user_pts_updates`)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var userID int64
-		if err := rows.Scan(&userID); err != nil {
-			return err
-		}
-
-		var maxPts sqlx.NullInt64
-		err = d.db.QueryRow(ctx, `SELECT MAX(pts) FROM user_pts_updates WHERE user_id = ?`, userID).
-			Scan(&maxPts)
+	for _, userID := range userIDs {
+		var maxPts sql.NullInt64
+		err = d.db.QueryRowPartial(ctx, &maxPts, `SELECT MAX(pts) FROM user_pts_updates WHERE user_id = ?`, userID)
 		if err != nil {
 			return err
 		}
@@ -137,32 +124,26 @@ func (d *Dao) syncPtsCounters(ctx context.Context) error {
 		if maxPts.Valid && maxPts.Int64 > 0 {
 			nextID := maxPts.Int64 + 1
 			key := "pts_updates_ngen_" + strconv.FormatInt(userID, 10)
-			if err := d.KV.Set(ctx, key, strconv.FormatInt(nextID, 10)); err != nil {
+			if err := d.KV.Set(key, strconv.FormatInt(nextID, 10)); err != nil {
 				logx.Errorf("idgen: failed to set %s: %v", key, err)
 				continue
 			}
 			logx.Infof("idgen: synced %s = %d (was %d)", key, nextID, maxPts.Int64)
 		}
 	}
-	return rows.Err()
+	return nil
 }
 
 func (d *Dao) syncChannelMessageBoxCounters(ctx context.Context) error {
-	rows, err := d.db.Query(ctx, `SELECT DISTINCT peer_id FROM messages WHERE peer_type = 3`)
+	var channelIDs []int64
+	err := d.db.QueryRowsPartial(ctx, &channelIDs, `SELECT DISTINCT peer_id FROM messages WHERE peer_type = 3`)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var channelID int64
-		if err := rows.Scan(&channelID); err != nil {
-			return err
-		}
-
-		var maxBoxID sqlx.NullInt64
-		err = d.db.QueryRow(ctx, `SELECT MAX(user_message_box_id) FROM messages WHERE peer_type = 3 AND peer_id = ?`, channelID).
-			Scan(&maxBoxID)
+	for _, channelID := range channelIDs {
+		var maxBoxID sql.NullInt64
+		err = d.db.QueryRowPartial(ctx, &maxBoxID, `SELECT MAX(user_message_box_id) FROM messages WHERE peer_type = 3 AND peer_id = ?`, channelID)
 		if err != nil {
 			return err
 		}
@@ -170,12 +151,12 @@ func (d *Dao) syncChannelMessageBoxCounters(ctx context.Context) error {
 		if maxBoxID.Valid && maxBoxID.Int64 > 0 {
 			nextID := maxBoxID.Int64 + 1
 			key := "channel_message_box_ngen_" + strconv.FormatInt(channelID, 10)
-			if err := d.KV.Set(ctx, key, strconv.FormatInt(nextID, 10)); err != nil {
+			if err := d.KV.Set(key, strconv.FormatInt(nextID, 10)); err != nil {
 				logx.Errorf("idgen: failed to set %s: %v", key, err)
 				continue
 			}
 			logx.Infof("idgen: synced %s = %d (was %d)", key, nextID, maxBoxID.Int64)
 		}
 	}
-	return rows.Err()
+	return nil
 }
