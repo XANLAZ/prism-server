@@ -50,6 +50,7 @@ import (
 	usernames_helper "github.com/teamgram/teamgram-server/app/bff/usernames"
 	users_helper "github.com/teamgram/teamgram-server/app/bff/users"
 	voipcalls_helper "github.com/teamgram/teamgram-server/app/bff/voipcalls"
+	langpack_helper "github.com/teamgram/teamgram-server/app/bff/langpack"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -72,6 +73,11 @@ func (s *Server) Initialize() error {
 	conf.MustLoad(*configFile, &c)
 
 	logx.Infov(c)
+
+	// Load langpacks
+	if err := langpack_helper.LoadAllLangPacks(c.LangpackPath); err != nil {
+		logx.Errorf("Failed to load langpacks: %v", err)
+	}
 	// ctx := svc.NewServiceContext(c)
 	// s.grpcSrv = grpc.New(ctx, c.RpcServerConf)
 
@@ -352,6 +358,14 @@ func (s *Server) Initialize() error {
 		mtproto.RegisterRPCPasskeyServer(
 			grpcServer,
 			passkeyhelper.New(passkeyhelper.Config{
+				RpcServerConf: c.RpcServerConf,
+			}))
+
+
+		// langpack_helper
+		mtproto.RegisterRPCLangpackServer(
+			grpcServer,
+			langpack_helper.New(langpack_helper.Config{
 				RpcServerConf: c.RpcServerConf,
 			}))
 

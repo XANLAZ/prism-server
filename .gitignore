@@ -75,3 +75,11 @@ docs/specs
 
 .pending
 AGENTS.md
+
+# Build artifacts
+bin/
+
+# Build logs
+build*.log
+sync_watchdog.log
+sync_watchdog.pid

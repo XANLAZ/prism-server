@@ -2,17 +2,18 @@
 //  All rights reserved.
 //
 // Author: Benqi (wubenqi@gmail.com)
-//
 
 package bff_proxy_client
 
 import (
 	"context"
+	
 	"reflect"
 	"time"
 
 	"github.com/teamgram/proto/mtproto"
 	"github.com/teamgram/proto/mtproto/crypto"
+	"github.com/teamgram/teamgram-server/app/bff/bff/client/langpack"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -70,6 +71,18 @@ func init() {
 	}).To_SecurePasswordKdfAlgo()
 }
 
+func makeLangPackStrings(langCode string) []*mtproto.LangPackString {
+	stringsMap := langpack.GetAllStrings(langCode)
+	result := make([]*mtproto.LangPackString, 0, len(stringsMap))
+	for key, value := range stringsMap {
+		result = append(result, mtproto.MakeTLLangPackString(&mtproto.LangPackString{
+			Key:   key,
+			Value: value,
+		}).To_LangPackString())
+	}
+	return result
+}
+
 func (c *BFFProxyClient) TryReturnFakeRpcResult(ctx context.Context, object mtproto.TLObject) (mtproto.TLObject, error) {
 	rt := reflect.TypeOf(object)
 	if rt.Kind() == reflect.Ptr {
@@ -80,27 +93,84 @@ func (c *BFFProxyClient) TryReturnFakeRpcResult(ctx context.Context, object mtpr
 	// langpack
 	case "TLLangpackGetDifference":
 		in := object.(*mtproto.TLLangpackGetDifference)
+		langCode := in.GetLangCode()
+		fromVersion := in.GetFromVersion()
+		currentVersion := langpack.GetVersion(langCode)
+
+		// If client has current version, return empty diff
+		if fromVersion >= int32(currentVersion) {
+			return mtproto.MakeTLLangPackDifference(&mtproto.LangPackDifference{
+				LangCode:    langCode,
+				FromVersion: fromVersion,
+				Version:     int32(currentVersion),
+				Strings:     []*mtproto.LangPackString{},
+			}).To_LangPackDifference(), nil
+		}
+
+		// Return full langpack as difference
 		return mtproto.MakeTLLangPackDifference(&mtproto.LangPackDifference{
-			LangCode:    in.GetLangCode(),
-			FromVersion: in.GetFromVersion(),
-			Version:     in.GetFromVersion(),
-			Strings:     []*mtproto.LangPackString{},
+			LangCode:    langCode,
+			FromVersion: fromVersion,
+			Version:     int32(currentVersion),
+			Strings:     makeLangPackStrings(langCode),
 		}).To_LangPackDifference(), nil
+
 	case "TLLangpackGetLangPack":
 		in := object.(*mtproto.TLLangpackGetLangPack)
+		langCode := in.GetLangCode()
+		currentVersion := langpack.GetVersion(langCode)
+
 		return mtproto.MakeTLLangPackDifference(&mtproto.LangPackDifference{
-			LangCode:    in.GetLangCode(),
+			LangCode:    langCode,
 			FromVersion: 0,
-			Version:     0,
-			Strings:     []*mtproto.LangPackString{},
+			Version:     int32(currentVersion),
+			Strings:     makeLangPackStrings(langCode),
 		}).To_LangPackDifference(), nil
+
 	case "TLLangpackGetLanguages":
+		// Return available languages
 		return &mtproto.Vector_LangPackLanguage{
-			Datas: []*mtproto.LangPackLanguage{},
+			Datas: []*mtproto.LangPackLanguage{
+				mtproto.MakeTLLangPackLanguage(&mtproto.LangPackLanguage{
+					Name:            "English",
+					NativeName:      "English",
+					LangCode:        "en",
+					PluralCode:      "en",
+					StringsCount:    0,
+					TranslatedCount: 0,
+					TranslationsUrl: "",
+				}).To_LangPackLanguage(),
+				mtproto.MakeTLLangPackLanguage(&mtproto.LangPackLanguage{
+					Name:            "Russian",
+					NativeName:      "Русский",
+					LangCode:        "ru",
+					PluralCode:      "ru",
+					StringsCount:    int32(len(langpack.GetAllStrings("ru"))),
+					TranslatedCount: int32(len(langpack.GetAllStrings("ru"))),
+					TranslationsUrl: "",
+				}).To_LangPackLanguage(),
+			},
 		}, nil
+
 	case "TLLangpackGetStrings":
+		// Return specific strings if requested (keys would be in the request)
+		in := object.(*mtproto.TLLangpackGetStrings)
+		langCode := in.GetLangCode()
+		keys := in.GetKeys()
+
+		var result []*mtproto.LangPackString
+		stringsMap := langpack.GetAllStrings(langCode)
+		for _, key := range keys {
+			if val, ok := stringsMap[key]; ok {
+				result = append(result, mtproto.MakeTLLangPackString(&mtproto.LangPackString{
+					Key:   key,
+					Value: val,
+				}).To_LangPackString())
+			}
+		}
+
 		return &mtproto.Vector_LangPackString{
-			Datas: []*mtproto.LangPackString{},
+			Datas: result,
 		}, nil
 
 	// webpage
@@ -216,7 +286,7 @@ func (c *BFFProxyClient) TryReturnFakeRpcResult(ctx context.Context, object mtpr
 			Documents: []*mtproto.Document{},
 		}).To_Messages_StickerSet(), nil
 
-	// 	scheduledmessages
+	// 	 scheduledmessages
 	case "TLMessagesGetScheduledMessages":
 		return mtproto.MakeTLMessagesMessages(&mtproto.Messages_Messages{
 			Messages: []*mtproto.Message{},

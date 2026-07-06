@@ -40,6 +40,7 @@ type Config struct {
 	StatusClient              zrpc.RpcClientConf
 	VoipCallConfigJSON        string                               `json:",optional"`
 	VoipRelayEndpoints        []voipcalls_helper.VoipRelayEndpoint `json:",optional"`
+	LangpackPath              string                               `json:",default=/app/langpacks"`
 	SignInServiceNotification []conf.MessageEntityConfig           `json:",optional"`
 	SignInMessage             []conf.MessageEntityConfig           `json:",optional"`
 }

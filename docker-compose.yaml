@@ -18,6 +18,8 @@ services:
       - "20120:20120"
       - "20670:20670"
       - "20420:20420"
+    volumes:
+      - ./langpacks:/app/langpacks:ro
     networks:
       - teamgram_net
 

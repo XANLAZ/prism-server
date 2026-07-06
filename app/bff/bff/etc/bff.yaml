@@ -1,8 +1,8 @@
 Name: bff.bff
-ListenOn: 127.0.0.1:20010
+ListenOn: 0.0.0.0:20010
 Etcd:
   Hosts:
-    - 127.0.0.1:2379
+    - etcd:2379
   Key: bff.bff
 Log:
   Mode: file
@@ -18,40 +18,42 @@ Code:
   Secret: ""
   RegionId: ""
 
+LangpackPath: "/app/langpacks"
+
 BizServiceClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: service.biz_service
 AuthSessionClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: service.authsession
 MediaClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: service.media
 IdgenClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: service.idgen
 MsgClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: messenger.msg
 DfsClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: service.dfs
 StatusClient:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      - etcd:2379
     Key: service.status
 
 SyncClient:
